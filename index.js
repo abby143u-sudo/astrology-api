@@ -1,35 +1,51 @@
 const express = require("express");
-const app = express();
+const Astronomy = require("astronomy-engine");
 
-// allow JSON and large input
+const app = express();
 app.use(express.json());
 
-// PORT
-const PORT = process.env.PORT || 3000;
-
-// ROOT
 app.get("/", (req, res) => {
-  res.send("API is running!");
+  res.send("Astrology API is running!");
 });
 
-// VEDIC CHART ENDPOINT
 app.get("/vedic-chart", (req, res) => {
   const { date, time, lat, lon } = req.query;
 
-  // Missing params
   if (!date || !time || !lat || !lon) {
-    return res.status(400).json({
-      error: "Please send all query parameters: date, time, lat, lon"
+    return res.json({
+      error: "Missing parameters: date, time, lat, lon"
     });
   }
 
+  // Combine date + time → JS Date
+  const dateTime = new Date(`${date}T${time}:00`);
+
+  // List of planets to calculate
+  const planets = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"];
+
+  let results = {};
+
+  planets.forEach(p => {
+    let body = Astronomy.Body[p];
+    let pos = Astronomy.Equatorial(body, dateTime, lat, lon);
+
+    // Convert RA (Right Ascension) to long
+    results[p] = {
+      RA: pos.ra,
+      Dec: pos.dec,
+      Distance: pos.dist
+    };
+  });
+
   return res.json({
-    message: "Vedic chart endpoint hit successfully!",
-    input: { date, time, lat, lon }
+    message: "Vedic chart computed",
+    date,
+    time,
+    location: { lat, lon },
+    planets: results
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log("Astrology API running on port", PORT);
-});
+// PORT
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("API running at", PORT));
