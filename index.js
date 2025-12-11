@@ -1,79 +1,100 @@
-import SwissEph from "swisseph-wasm";
 import express from "express";
+import SwissEPH from "swiss-ephemeris-wasm";
 
 const app = express();
 app.use(express.json());
 
-const swe = new SwissEph();
+const PORT = process.env.PORT || 3000;
 
-// Helper: convert to Julian day
-function getJulianDay(year, month, day, hour) {
-  return swe.julday(year, month, day, hour);
+// initialize Swiss Ephemeris once
+let swe;
+async function initSwiss() {
+  if (!swe) {
+    swe = await SwissEPH.init(); 
+    await swe.swe_set_ephe_path();
+  }
 }
 
-// Nakshatra calculation
+// convert date + time to Julian day
+function toJulian(year, month, day, hour) {
+  return swe.swe_julday(year, month, day, hour, swe.SE_GREG_CAL);
+}
+
+// Nakshatra list
 const nakshatras = [
-  "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
-  "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni",
-  "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha",
-  "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishtha",
-  "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"
+  "Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra",
+  "Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni",
+  "Uttara Phalguni","Hasta","Chitra","Swati","Vishakha",
+  "Anuradha","Jyeshtha","Mula","Purva Ashadha","Uttara Ashadha",
+  "Shravana","Dhanishtha","Shatabhisha","Purva Bhadrapada",
+  "Uttara Bhadrapada","Revati"
 ];
 
-function computeNakshatra(lon) {
-  const degPerNak = 360 / 27;
-  const idx = Math.floor(lon / degPerNak);
-  const within = lon - idx * degPerNak;
-  const pada = Math.floor(within / (degPerNak / 4)) + 1;
-  return { nakshatra: nakshatras[idx], pada };
+// calculate nakshatra + pada
+function getNakshatra(lon) {
+  const degPer = 360 / 27;
+  const idx = Math.floor(lon / degPer);
+  const within = lon - idx * degPer;
+  const pada = Math.floor(within / (degPer / 4)) + 1;
+
+  return {
+    nakshatra: nakshatras[idx],
+    pada
+  };
 }
 
-app.get("/vedic-simple", async (req, res) => {
-  await swe.initSwissEph();
-  const { date, time, lat, lon } = req.query;
-  if (!date || !time || !lat || !lon)
-    return res.status(400).json({ error: "date, time, lat, lon required" });
+// ⭐ ENDPOINT — yahi tumhara main API endpoint hai
+app.get("/vedic-chart", async (req, res) => {
+  await initSwiss();
 
+  const { date, time, lat, lon } = req.query;
+
+  // check all required inputs
+  if (!date || !time || !lat || !lon) {
+    return res.status(400).json({
+      error: "Required: date, time, lat, lon"
+    });
+  }
+
+  // split date & time
   const [Y, M, D] = date.split("-").map(Number);
   const [h, m] = time.split(":").map(Number);
-  const hourDecimal = h + m / 60;
+  const hour = h + m / 60;
 
-  const jd = getJulianDay(Y, M, D, hourDecimal);
+  // Julian day
+  const jd = toJulian(Y, M, D, hour);
 
-  const planetsToCalc = [
-    swe.SE_SUN, swe.SE_MOON, swe.SE_MARS, swe.SE_MERCURY,
-    swe.SE_JUPITER, swe.SE_VENUS, swe.SE_SATURN
+  // planets list
+  const planetsList = [
+    swe.SE_SUN, swe.SE_MOON, swe.SE_MERCURY,
+    swe.SE_VENUS, swe.SE_MARS, swe.SE_JUPITER,
+    swe.SE_SATURN
   ];
 
-  const results = {};
-  for (let p of planetsToCalc) {
-    const arr = swe.calc_ut(jd, p, swe.SEFLG_SWIEPH | swe.SEFLG_SIDEREAL);
-    results[swe.get_planet_name(p)] = {
-      longitude: arr[0],
-      ...computeNakshatra(arr[0])
+  const result = {};
+
+  // calculate each planet
+  for (const p of planetsList) {
+    const arr = swe.swe_calc_ut(jd, p, swe.SEFLG_SWIEPH);
+    const lonDeg = arr[0];
+
+    result[swe.get_planet_name(p)] = {
+      longitude: lonDeg,
+      ...getNakshatra(lonDeg)
     };
   }
 
   res.json({
     input: { date, time, lat, lon },
     julian_day: jd,
-    planets: results
+    planets: result
   });
 });
 
-const PORT = process.env.PORT || 3000;
-// yeh endpoint hai
-app.get("/vedic-chart", (req, res) => {
-    res.send("Astrology Calculation Running");
+// start server
+app.listen(PORT, () => {
+  console.log(`Astrology API running on port ${PORT}`);
 });
-
-// server start
-app.listen(PORT, () => console.log("Server running"));
-
-app.listen(PORT, () => console.log(`Astrology API live on ${PORT}`));
-
-
-
 
 
 
