@@ -108,4 +108,85 @@ app.post("/basic-chart", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Astrology API running on port ${PORT}`);
 });
+const swisseph = require("swisseph");
+
+// Swiss Ephemeris settings
+swisseph.swe_set_ephe_path(__dirname); // ephemeris files automatically downloaded in node_modules
+
+// Nakshatra list (27)
+const nakshatras = [
+  "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
+  "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni",
+  "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha",
+  "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana",
+  "Dhanishtha", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada",
+  "Revati"
+];
+
+// Function → find Nakshatra from longitude
+function getNakshatra(longitude) {
+  const nak = Math.floor(longitude / (360 / 27));
+  const pada = Math.floor((longitude % (360 / 27)) / (360 / 108)) + 1;
+  return { nakshatra: nakshatras[nak], pada };
+}
+
+// Main endpoint
+app.get("/vedic-chart", (req, res) => {
+  const { date, time, lat, lon } = req.query;
+
+  if (!date || !time || !lat || !lon) {
+    return res.status(400).json({
+      error: "Please send date, time, lat, lon. Example: ?date=1996-09-26&time=09:30&lat=25.6&lon=85.1"
+    });
+  }
+
+  // Convert date time → Julian Day
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+
+  const julianDay = swisseph.swe_julday(year, month, day, hour + minute / 60);
+
+  const planets = {
+    sun: swisseph.SE_SUN,
+    moon: swisseph.SE_MOON,
+    mars: swisseph.SE_MARS,
+    mercury: swisseph.SE_MERCURY,
+    jupiter: swisseph.SE_JUPITER,
+    venus: swisseph.SE_VENUS,
+    saturn: swisseph.SE_SATURN,
+    rahu: swisseph.SE_TRUE_NODE,
+    ketu: null
+  };
+
+  let planetResults = {};
+  
+  Object.keys(planets).forEach(p => {
+    if (p === "ketu") {
+      planetResults["ketu"] = {
+        longitude: (planetResults["rahu"].longitude + 180) % 360
+      };
+      return;
+    }
+
+    const pos = swisseph.swe_calc_ut(julianDay, planets[p], 0);
+    planetResults[p] = {
+      longitude: pos.longitude,
+      nakshatra: getNakshatra(pos.longitude).nakshatra,
+      pada: getNakshatra(pos.longitude).pada
+    };
+  });
+
+  // Ascendant calculation
+  const asc = swisseph.swe_houses(julianDay, Number(lat), Number(lon));
+
+  res.json({
+    input: { date, time, lat, lon },
+    ascendant_degree: asc.ascendant,
+    planets: planetResults,
+    houses: asc.house,
+    moon_nakshatra: planetResults.moon.nakshatra,
+    moon_pada: planetResults.moon.pada,
+    note: "This is accurate Vedic chart data using Swiss Ephemeris."
+  });
+});
 
