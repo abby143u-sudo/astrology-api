@@ -63,3 +63,22 @@ app.get("/vedic-simple", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Astrology API live on ${PORT}`));
+app.get("/vedic-chart", async (req, res) => {
+   // yahan calculations hoti hain
+   res.json({ ...output });
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
