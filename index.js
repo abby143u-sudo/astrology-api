@@ -8,7 +8,6 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.send("Astrology API is running!");
 });
-
 // VEDIC CHART ROUTE
 app.get("/vedic-chart", (req, res) => {
   const { date, time, lat, lon } = req.query;
