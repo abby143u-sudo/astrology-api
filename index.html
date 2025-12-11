@@ -1,1 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Astrology API UI</title>
 
+  <style>
+    body {
+      font-family: Arial;
+      background: #f0f0f0;
+      padding: 30px;
+    }
+    .box {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #ccc;
+    }
+    button {
+      background: #6a5acd;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #5943c9;
+    }
+    input {
+      padding: 8px;
+      width: 95%;
+      margin-bottom: 10px;
+      border: 1px solid #aaa;
+      border-radius: 5px;
+    }
+    .result {
+      white-space: pre-wrap;
+      background: #fafafa;
+      padding: 10px;
+      border: 1px solid #ddd;
+      margin-top: 15px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>🔥 Astrology API Frontend</h1>
+  <p>Enter details → Click button → API result niche show hoga</p>
+
+  <!-- API URL -->
+  <div class="box">
+    <h2>API Base URL</h2>
+    <input id="baseUrl" value="https://astrology-api-3j2i.onrender.com" />
+  </div>
+
+  <!-- Vedic Chart -->
+  <div class="box">
+    <h2>Vedic Chart</h2>
+    <input id="v-date" placeholder="Date (YYYY-MM-DD)" />
+    <input id="v-time" placeholder="Time (HH:MM)" />
+    <input id="v-place" placeholder="Place" />
+    <button onclick="vedicChart()">Get Vedic Chart</button>
+    <div id="vedic-result" class="result"></div>
+  </div>
+
+  <!-- KP Chart -->
+  <div class="box">
+    <h2>KP Chart</h2>
+    <input id="kp-date" placeholder="Date (YYYY-MM-DD)" />
+    <input id="kp-time" placeholder="Time (HH:MM)" />
+    <input id="kp-place" placeholder="Place" />
+    <button onclick="kpChart()">Get KP Chart</button>
+    <div id="kp-result" class="result"></div>
+  </div>
+
+  <!-- Numerology -->
+  <div class="box">
+    <h2>Numerology</h2>
+    <input id="num-name" placeholder="Name" />
+    <input id="num-dob" placeholder="DOB (YYYY-MM-DD)" />
+    <button onclick="numerology()">Get Numerology</button>
+    <div id="num-result" class="result"></div>
+  </div>
+
+  <!-- Horoscope -->
+  <div class="box">
+    <h2>Daily Horoscope</h2>
+    <input id="h-sign" placeholder="Zodiac Sign (leo, aries...)" />
+    <button onclick="horoscope()">Get Horoscope</button>
+    <div id="h-result" class="result"></div>
+  </div>
+
+  <script>
+    function api(path, method = "GET", body = null) {
+      const base = document.getElementById("baseUrl").value;
+
+      return fetch(base + path, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: body ? JSON.stringify(body) : null
+      }).then((res) => res.json());
+    }
+
+    function vedicChart() {
+      api("/vedic-chart", "POST", {
+        date: document.getElementById("v-date").value,
+        time: document.getElementById("v-time").value,
+        place: document.getElementById("v-place").value
+      }).then((r) => {
+        document.getElementById("vedic-result").innerText = JSON.stringify(r, null, 2);
+      });
+    }
+
+    function kpChart() {
+      api("/kp-chart", "POST", {
+        date: document.getElementById("kp-date").value,
+        time: document.getElementById("kp-time").value,
+        place: document.getElementById("kp-place").value
+      }).then((r) => {
+        document.getElementById("kp-result").innerText = JSON.stringify(r, null, 2);
+      });
+    }
+
+    function numerology() {
+      api("/numerology", "POST", {
+        name: document.getElementById("num-name").value,
+        dob: document.getElementById("num-dob").value
+      }).then((r) => {
+        document.getElementById("num-result").innerText = JSON.stringify(r, null, 2);
+      });
+    }
+
+    function horoscope() {
+      const sign = document.getElementById("h-sign").value;
+      api("/horoscope/" + sign).then((r) => {
+        document.getElementById("h-result").innerText = JSON.stringify(r, null, 2);
+      });
+    }
+  </script>
+
+</body>
+</html>
