@@ -1,13 +1,11 @@
 {
-  "name": "vedic-astrology-api",
+  "name": "astrology-api",
   "version": "1.0.0",
-  "type": "module",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "swiss-ephemeris-wasm": "^1.2.12"
+    "express": "^4.18.2"
   }
 }
